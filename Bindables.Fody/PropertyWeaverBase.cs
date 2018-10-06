@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Mono.Cecil;
-using System.Windows;
 using Mono.Cecil.Cil;
 
 namespace Bindables.Fody
@@ -29,27 +28,60 @@ namespace Bindables.Fody
 		protected TypeReference DependencyPropertyType { get; }
 		protected TypeReference DependencyPropertyChangedEventArgsType { get; }
 
-		protected PropertyWeaverBase(ModuleDefinition moduleDefinition)
+		protected PropertyWeaverBase(
+			ModuleDefinition moduleDefinition,
+			Type propertyChangedCallbackType,
+			Type coerceValueCallbackType,
+			Type frameworkPropertyMetadataType,
+			Type frameworkPropertyMatadataOptionsType,
+			Type dependencyObjectType,
+			Type dependencyPropertyType,
+			Type dependencyPropertyChangedEventArgsType)
 		{
 			ModuleDefinition = moduleDefinition;
 
 			GetTypeFromHandle = moduleDefinition.ImportMethod(typeof(Type), nameof(Type.GetTypeFromHandle), typeof(RuntimeTypeHandle));
 
-			PropertyChangedCallbackConstructor = moduleDefinition.ImportSingleConstructor(typeof(PropertyChangedCallback));
-			CoerceValueCallbackConstructor = moduleDefinition.ImportSingleConstructor(typeof(CoerceValueCallback));
+			PropertyChangedCallbackConstructor = moduleDefinition.ImportSingleConstructor(propertyChangedCallbackType);
+			CoerceValueCallbackConstructor = moduleDefinition.ImportSingleConstructor(coerceValueCallbackType);
 
-			FrameworkPropertyMetadataConstructor = moduleDefinition.ImportConstructor(typeof(FrameworkPropertyMetadata), typeof(object));
-			FrameworkPropertyMetadataConstructorWithOptions = moduleDefinition.ImportConstructor(typeof(FrameworkPropertyMetadata), typeof(object), typeof(FrameworkPropertyMetadataOptions));
-			FrameworkPropertyMetadataConstructorWithOptionsAndPropertyChangedCallback = moduleDefinition.ImportConstructor(typeof(FrameworkPropertyMetadata), typeof(object), typeof(FrameworkPropertyMetadataOptions), typeof(PropertyChangedCallback));
-			FrameworkPropertyMetadataConstructorWithOptionsPropertyChangedCallbackAndCoerceValueCallback = moduleDefinition.ImportConstructor(typeof(FrameworkPropertyMetadata), typeof(object), typeof(FrameworkPropertyMetadataOptions), typeof(PropertyChangedCallback), typeof(CoerceValueCallback));
+			FrameworkPropertyMetadataConstructor = moduleDefinition.ImportConstructor(
+				frameworkPropertyMetadataType,
+				typeof(object));
 
-			GetValue = moduleDefinition.ImportMethod(typeof(DependencyObject), nameof(DependencyObject.GetValue), typeof(DependencyProperty));
-			SetValue = moduleDefinition.ImportMethod(typeof(DependencyObject), nameof(DependencyObject.SetValue), typeof(DependencyProperty), typeof(object));
+			FrameworkPropertyMetadataConstructorWithOptions = moduleDefinition.ImportConstructor(
+				frameworkPropertyMetadataType,
+				typeof(object),
+				frameworkPropertyMatadataOptionsType);
+
+			FrameworkPropertyMetadataConstructorWithOptionsAndPropertyChangedCallback = moduleDefinition.ImportConstructor(
+				frameworkPropertyMetadataType,
+				typeof(object),
+				frameworkPropertyMatadataOptionsType,
+				propertyChangedCallbackType);
+
+			FrameworkPropertyMetadataConstructorWithOptionsPropertyChangedCallbackAndCoerceValueCallback = moduleDefinition.ImportConstructor(
+				frameworkPropertyMetadataType,
+				typeof(object),
+				frameworkPropertyMatadataOptionsType,
+				propertyChangedCallbackType,
+				coerceValueCallbackType);
+
+			GetValue = moduleDefinition.ImportMethod(
+				dependencyObjectType,
+				"GetValue", // nameof(DependencyObject.GetValue)
+				dependencyPropertyType);
+
+			SetValue = moduleDefinition.ImportMethod(
+				dependencyObjectType,
+				"SetValue", // nameof(DependencyObject.SetValue)
+				dependencyPropertyType,
+				typeof(object));
 
 			ObjectType = moduleDefinition.ImportReference(typeof(object));
-			DependencyObjectType = moduleDefinition.ImportReference(typeof(DependencyObject));
-			DependencyPropertyType = moduleDefinition.ImportReference(typeof(DependencyProperty));
-			DependencyPropertyChangedEventArgsType = moduleDefinition.ImportReference(typeof(DependencyPropertyChangedEventArgs));
+			DependencyObjectType = moduleDefinition.ImportReference(dependencyObjectType);
+			DependencyPropertyType = moduleDefinition.ImportReference(dependencyPropertyType);
+			DependencyPropertyChangedEventArgsType = moduleDefinition.ImportReference(dependencyPropertyChangedEventArgsType);
 		}
 
 		public void Execute()
@@ -97,7 +129,7 @@ namespace Bindables.Fody
 				CustomAttributeArgument options = attribute.Properties.FirstOrDefault(p => p.Name == nameof(DependencyPropertyAttribute.Options)).Argument;
 
 				instructions.Add(options.Value == null
-					? Instruction.Create(OpCodes.Ldc_I4, (int)FrameworkPropertyMetadataOptions.None)
+					? Instruction.Create(OpCodes.Ldc_I4, 0) // (int)FrameworkPropertyMetadataOptions.None
 					: Instruction.Create(OpCodes.Ldc_I4, (int)options.Value));
 
 				string propertyChangedCallback = attribute.Properties.FirstOrDefault(p => p.Name == nameof(DependencyPropertyAttribute.OnPropertyChanged)).Argument.Value as string;
@@ -160,7 +192,7 @@ namespace Bindables.Fody
 			}
 			catch (ArgumentException)
 			{
-				throw new WeavingException($@"No method with signature: ""static void {propertyChangedCallback}({nameof(DependencyObject)}, {nameof(DependencyPropertyChangedEventArgs)})"" found.")
+				throw new WeavingException($@"No method with signature: ""static void {propertyChangedCallback}(DependencyObject, DependencyPropertyChangedEventArgs)"" found.")
 				{
 					SequencePoint = property.GetMethod.DebugInformation.SequencePoints.FirstOrDefault()
 				};
@@ -186,7 +218,7 @@ namespace Bindables.Fody
 			}
 			catch (ArgumentException)
 			{
-				throw new WeavingException($@"No method with signature: ""static object {coerceValueCallback}({nameof(DependencyObject)}, object)"" found.")
+				throw new WeavingException($@"No method with signature: ""static object {coerceValueCallback}(DependencyObject, object)"" found.")
 				{
 					SequencePoint = property.GetMethod.DebugInformation.SequencePoints.FirstOrDefault()
 				};

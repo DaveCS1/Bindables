@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
@@ -19,15 +18,55 @@ namespace Bindables.Fody
 		private readonly MethodReference _setValueDependencyPropertyKey;
 		private readonly MethodReference _getDependencyProperty;
 
-		public DependencyPropertyWeaver(ModuleDefinition moduleDefinition) : base(moduleDefinition)
+		public DependencyPropertyWeaver(
+			ModuleDefinition moduleDefinition,
+			Type propertyChangedCallbackType,
+			Type coerceValueCallbackType,
+			Type frameworkPropertyMetadataType,
+			Type frameworkPropertyMatadataOptionsType,
+			Type dependencyObjectType,
+			Type dependencyPropertyType,
+			Type dependencyPropertyChangedEventArgsType,
+			Type propertyMetadataType,
+			Type dependencyPropertyKeyType)
+			:
+			base(
+				moduleDefinition,
+				propertyChangedCallbackType,
+				coerceValueCallbackType,
+				frameworkPropertyMetadataType,
+				frameworkPropertyMatadataOptionsType,
+				dependencyObjectType,
+				dependencyPropertyType,
+				dependencyPropertyChangedEventArgsType)
 		{
-			_dependencyPropertyKey = moduleDefinition.ImportReference(typeof(DependencyPropertyKey));
+			_dependencyPropertyKey = moduleDefinition.ImportReference(dependencyPropertyKeyType);
 
-			_registerDependencyProperty = moduleDefinition.ImportMethod(typeof(DependencyProperty), nameof(DependencyProperty.Register), typeof(string), typeof(Type), typeof(Type), typeof(PropertyMetadata));
-			_registerDependencyPropertyReadOnly = moduleDefinition.ImportMethod(typeof(DependencyProperty), nameof(DependencyProperty.RegisterReadOnly), typeof(string), typeof(Type), typeof(Type), typeof(PropertyMetadata));
+			_registerDependencyProperty = moduleDefinition.ImportMethod(
+				dependencyPropertyType,
+				"Register", // nameof(DependencyProperty.Register)
+				typeof(string),
+				typeof(Type),
+				typeof(Type),
+				propertyMetadataType);
 
-			_setValueDependencyPropertyKey = moduleDefinition.ImportMethod(typeof(DependencyObject), nameof(DependencyObject.SetValue), typeof(DependencyPropertyKey), typeof(object));
-			_getDependencyProperty = moduleDefinition.ImportMethod(typeof(DependencyPropertyKey), $"get_{nameof(DependencyPropertyKey.DependencyProperty)}");
+			_registerDependencyPropertyReadOnly = moduleDefinition.ImportMethod(
+				dependencyPropertyType,
+				"RegisterReadOnly", // nameof(DependencyProperty.RegisterReadOnly)
+				typeof(string),
+				typeof(Type),
+				typeof(Type),
+				propertyMetadataType);
+
+			_setValueDependencyPropertyKey = moduleDefinition.ImportMethod(
+				dependencyObjectType,
+				"SetValue", // nameof(DependencyObject.SetValue)
+				dependencyPropertyKeyType,
+				typeof(object));
+
+			_getDependencyProperty = moduleDefinition.ImportMethod(
+				dependencyPropertyKeyType,
+				"get_DependencyProperty"); // $"get_{nameof(DependencyPropertyKey.DependencyProperty)}"
 		}
 
 		protected override void ExecuteInternal(TypeDefinition type, List<PropertyDefinition> propertiesToConvert)

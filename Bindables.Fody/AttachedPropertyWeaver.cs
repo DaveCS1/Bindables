@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
@@ -13,9 +12,34 @@ namespace Bindables.Fody
 	{
 		private readonly MethodReference _registerAttachedProperty;
 
-		public AttachedPropertyWeaver(ModuleDefinition moduleDefinition) : base(moduleDefinition)
+		public AttachedPropertyWeaver(
+			ModuleDefinition moduleDefinition,
+			Type propertyChangedCallbackType,
+			Type coerceValueCallbackType,
+			Type frameworkPropertyMetadataType,
+			Type frameworkPropertyMatadataOptionsType,
+			Type dependencyObjectType,
+			Type dependencyPropertyType,
+			Type dependencyPropertyChangedEventArgsType,
+			Type propertyMetadataType)
+			:
+			base(
+				moduleDefinition,
+				propertyChangedCallbackType,
+				coerceValueCallbackType,
+				frameworkPropertyMetadataType,
+				frameworkPropertyMatadataOptionsType,
+				dependencyObjectType,
+				dependencyPropertyType,
+				dependencyPropertyChangedEventArgsType)
 		{
-			_registerAttachedProperty = moduleDefinition.ImportMethod(typeof(DependencyProperty), nameof(DependencyProperty.RegisterAttached), typeof(string), typeof(Type), typeof(Type), typeof(PropertyMetadata));
+			_registerAttachedProperty = moduleDefinition.ImportMethod(
+				dependencyPropertyType,
+				"RegisterAttached", // nameof(DependencyProperty.RegisterAttached)
+				typeof(string),
+				typeof(Type),
+				typeof(Type),
+				propertyMetadataType);
 		}
 
 		protected override void ExecuteInternal(TypeDefinition type, List<PropertyDefinition> propertiesToConvert)

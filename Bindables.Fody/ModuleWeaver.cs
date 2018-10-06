@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Windows;
 using Fody;
 
 namespace Bindables.Fody
@@ -7,8 +8,28 @@ namespace Bindables.Fody
 	{
 		public override void Execute()
 		{
-			DependencyPropertyWeaver dependencyPropertyWeaver = new DependencyPropertyWeaver(ModuleDefinition);
-			AttachedPropertyWeaver attachedPropertyWeaver = new AttachedPropertyWeaver(ModuleDefinition);
+			DependencyPropertyWeaver dependencyPropertyWeaver = new DependencyPropertyWeaver(
+				ModuleDefinition,
+				typeof(PropertyChangedCallback),
+				typeof(CoerceValueCallback),
+				typeof(FrameworkPropertyMetadata),
+				typeof(FrameworkPropertyMetadataOptions),
+				typeof(DependencyObject),
+				typeof(DependencyProperty),
+				typeof(DependencyPropertyChangedEventArgs),
+				typeof(PropertyMetadata),
+				typeof(DependencyPropertyKey));
+
+			AttachedPropertyWeaver attachedPropertyWeaver = new AttachedPropertyWeaver(
+				ModuleDefinition,
+				typeof(PropertyChangedCallback),
+				typeof(CoerceValueCallback),
+				typeof(FrameworkPropertyMetadata),
+				typeof(FrameworkPropertyMetadataOptions),
+				typeof(DependencyObject),
+				typeof(DependencyProperty),
+				typeof(DependencyPropertyChangedEventArgs),
+				typeof(PropertyMetadata));
 
 			dependencyPropertyWeaver.Execute();
 			attachedPropertyWeaver.Execute();
